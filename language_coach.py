@@ -1,7 +1,6 @@
 # 필요한 라이브러리 임포트
 import streamlit as st
-from google.generativeai import GenerativeModel
-import google.generativeai as genai
+from groq import Groq
 from datetime import datetime
 
 # ============================================================================
@@ -9,17 +8,22 @@ from datetime import datetime
 # 3명의 특화된 언어 학습 코치가 팀을 이루어 사용자를 지원
 # ============================================================================
 
-def call_gemini(model, prompt):
-    """Gemini API 호출 및 에러 처리"""
+def call_openai(client, prompt):
+    """OpenAI ChatGPT API 호출 및 에러 처리"""
     try:
-        response = model.generate_content(prompt)
-        if not response.text:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2000
+        )
+        text = response.choices[0].message.content
+        if not text:
             raise ValueError("AI 모델이 빈 응답을 반환했습니다.")
-        return response.text
+        return text
     except Exception as e:
         error_msg = str(e)
-        if "API_KEY" in error_msg.upper() or "401" in error_msg or "403" in error_msg:
-            raise ValueError("API 키가 유효하지 않습니다. Google AI Studio에서 발급받은 키를 확인해주세요.") from e
+        if "401" in error_msg or "authentication" in error_msg.lower():
+            raise ValueError("API 키가 유효하지 않습니다. OpenAI에서 발급받은 키를 확인해주세요.") from e
         if "429" in error_msg or "quota" in error_msg.lower():
             raise ValueError("API 사용 한도를 초과했습니다. 잠시 후 다시 시도해주세요.") from e
         raise ValueError(f"AI 응답 생성 중 오류가 발생했습니다: {error_msg}") from e
@@ -38,15 +42,18 @@ def validate_input(language, input_data):
 class LanguageLearningTeam:
     """AI 기반 언어 학습 코치 팀 관리 클래스"""
     
-    def __init__(self, api_key):
+    def __init__(self, api_key=None):
         self.api_key = api_key
-        genai.configure(api_key=api_key)
-        self.model = GenerativeModel('gemini-2.5-pro')
+        # API 키가 있으면 사용, 없으면 환경변수에서 자동으로 가져옴
+        if api_key:
+            self.client = Groq(api_key=api_key)
+        else:
+            self.client = Groq()  # OPENAI_API_KEY 환경변수 사용
         
         # 3명의 특화된 언어 학습 코치 초기화
-        self.assessment_coach = AssessmentCoach(self.model)  # 학습자 평가 및 계획 전문가
-        self.language_coach = LanguageCoach(self.model)     # 언어 지식 및 이론 전문가
-        self.practice_coach = PracticeCoach(self.model)  # 실전 연습 및 활용 전문가
+        self.assessment_coach = AssessmentCoach(self.client)  # 학습자 평가 및 계획 전문가
+        self.language_coach = LanguageCoach(self.client)     # 언어 지식 및 이론 전문가
+        self.practice_coach = PracticeCoach(self.client)  # 실전 연습 및 활용 전문가
         
         # 워크플로우 로그 초기화
         self.workflow_logs = []
@@ -93,8 +100,8 @@ class LanguageLearningTeam:
 class AssessmentCoach:
     """학습자 평가 및 계획 전문 코치"""
     
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, client):
+        self.client = client
         self.coach_name = "김준서 평가 코치"
         self.coach_intro = """
         안녕하세요, 김준서 평가 코치입니다. 저는 학습자의 현재 수준을 평가하고 맞춤형 학습 계획을 수립하는 전문가입니다.
@@ -128,14 +135,14 @@ class AssessmentCoach:
         전문적이면서도 이해하기 쉬운 언어로 설명해 주세요.
         """
         
-        return call_gemini(self.model, prompt)
+        return call_openai(self.client, prompt)
 
 
 class LanguageCoach:
     """언어 지식 및 이론 전문 코치"""
     
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, client):
+        self.client = client
         self.coach_name = "이민지 언어 코치"
         self.coach_intro = """
         안녕하세요, 이민지 언어 코치입니다. 저는 언어 구조, 문법, 어휘, 발음 등 언어 지식과 학습 자료를 전문으로 합니다.
@@ -184,14 +191,14 @@ class LanguageCoach:
         언어 구조 설명, 핵심 문법 개념, 필수 어휘 영역, 발음 가이드, 추천 학습 자료를 반드시 포함해 주세요.
         """
         
-        return call_gemini(self.model, prompt)
+        return call_openai(self.client, prompt)
 
 
 class PracticeCoach:
     """실전 연습 및 활용 전문 코치"""
     
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, client):
+        self.client = client
         self.coach_name = "박도윤 실전 코치"
         self.coach_intro = """
         안녕하세요, 박도윤 실전 코치입니다. 저는 언어의 실제 활용 방법, 효과적인 연습 전략, 문화적 맥락을 전문으로 합니다.
@@ -246,7 +253,7 @@ class PracticeCoach:
         실용적이고 효과적인 연습 전략, 문화적 맥락, 지속적 향상 방법을 포함한 종합적인 가이드를 제공해주세요.
         """
         
-        return call_gemini(self.model, prompt)
+        return call_openai(self.client, prompt)
 
 
 # ============================================================================
@@ -276,13 +283,12 @@ def main():
     # 사이드바 설정
     with st.sidebar:
         st.header("🔑 API 설정")
-        # API 키 입력 필드
-        api_key = st.text_input("Google API 키를 입력하세요", type="password")
+        # API 키 입력 필드 (선택사항)
+        api_key = st.text_input("OpenAI API 키 (선택사항)", type="password",
+                                help="입력하지 않으면 환경변수 OPENAI_API_KEY를 사용합니다.")
         
-        # API 키가 입력되지 않은 경우 경고 메시지 표시
         if not api_key:
-            st.warning("API 키를 입력해주세요.")
-            st.stop()
+            st.info("API 키를 입력하지 않으면 환경변수 OPENAI_API_KEY를 자동으로 사용합니다.")
             
         st.markdown("---")
         
@@ -465,7 +471,7 @@ def main():
                 st.warning(error)
         else:
             try:
-                learning_team = LanguageLearningTeam(api_key)
+                learning_team = LanguageLearningTeam(api_key if api_key else None)
                 result = learning_team.get_learning_advice(language, input_data)
 
                 st.session_state["last_result"] = result
