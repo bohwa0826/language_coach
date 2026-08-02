@@ -1,0 +1,5 @@
+# Streamlit: 웹 UI 프레임워크 (입력 폼, 카드, 스피너, CSS 등)
+streamlit==1.60.0
+
+# Google Generative AI: Gemini API 클라이언트 (GenerativeModel, genai.configure)
+google-generativeai==0.8.6
