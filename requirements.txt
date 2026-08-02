@@ -1,5 +1,5 @@
 # Streamlit: 웹 UI 프레임워크 (입력 폼, 카드, 스피너, CSS 등)
 streamlit==1.60.0
 
-# Google Generative AI: Gemini API 클라이언트 (GenerativeModel, genai.configure)
-google-generativeai==0.8.6
+# Groq: LLM API 클라이언트 (llama-3.3-70b-versatile 등 무료 모델 사용)
+groq
