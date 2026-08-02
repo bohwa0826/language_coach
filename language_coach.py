@@ -41,7 +41,7 @@ class LanguageLearningTeam:
     def __init__(self, api_key):
         self.api_key = api_key
         genai.configure(api_key=api_key)
-        self.model = GenerativeModel('gemini-2.5-pro-preview-05-06')
+        self.model = GenerativeModel('gemini-2.5-pro')
         
         # 3명의 특화된 언어 학습 코치 초기화
         self.assessment_coach = AssessmentCoach(self.model)  # 학습자 평가 및 계획 전문가
