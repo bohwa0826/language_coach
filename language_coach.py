@@ -12,7 +12,7 @@ def call_openai(client, prompt):
     """OpenAI ChatGPT API 호출 및 에러 처리"""
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3-groq-8b-tool-user",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=2000
         )
